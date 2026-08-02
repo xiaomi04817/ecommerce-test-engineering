@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(powershell -Command '$cp = \\(Get-Content '\\\\''d:\\\\E_commerce_testing_project\\\\backend\\\\classpath.txt'\\\\'' -Raw\\) -replace '\\\\''\\\\r?\\\\n'\\\\'','\\\\'';'\\\\''; $cp = $cp.TrimEnd\\('\\\\'';'\\\\''\\); Start-Process -FilePath '\\\\''C:\\\\Program Files\\\\Java\\\\jdk-18.0.1.1\\\\bin\\\\java.exe'\\\\'' -ArgumentList '\\\\''-XX:TieredStopAtLevel=1'\\\\'','\\\\''-cp'\\\\'',$cp,'\\\\''com.ecommerce.EcommerceApplication'\\\\'' -NoNewWindow; Write-Host '\\\\''OK'\\\\''')",
+      "Bash(curl -s http://localhost:8080/api/products/1)",
+      "Bash(python -m pytest test_order_flow.py::TestOrderEdgeCases::test_order_zero_quantity_item test_order_flow.py::TestOrderEdgeCases::test_order_negative_quantity_item -v --tb=short)",
+      "Bash(python -m pytest -v --tb=short)",
+      "Bash(npm -v)",
+      "Bash(pip install *)",
+      "Bash(PYTHONIOENCODING=utf-8 python compat_test.py)",
+      "Bash(curl -s -X POST http://localhost:8080/api/auth/login -d 'test' -H \"Content-Type: text/plain\")",
+      "Bash(netstat -ano)",
+      "Bash(javap -c -p \"d:/E_commerce_testing_project/backend/target/classes/com/ecommerce/common/GlobalExceptionHandler.class\")",
+      "Bash(powershell -Command \"taskkill /F /IM java.exe 2>&1 | Out-Null; Start-Sleep -Seconds 3; Write-Host 'All Java killed'\")",
+      "Bash(powershell -Command '$cp = \\(Get-Content '\\\\''d:\\\\E_commerce_testing_project\\\\backend\\\\classpath.txt'\\\\'' -Raw\\) -replace '\\\\''\\\\r?\\\\n'\\\\'','\\\\'';'\\\\''; $cp = $cp.TrimEnd\\('\\\\'';'\\\\''\\); $p = Start-Process -FilePath '\\\\''C:\\\\Program Files\\\\Java\\\\jdk-18.0.1.1\\\\bin\\\\java.exe'\\\\'' -ArgumentList '\\\\''-XX:TieredStopAtLevel=1'\\\\'','\\\\''-cp'\\\\'',$cp,'\\\\''com.ecommerce.EcommerceApplication'\\\\'' -PassThru; Write-Host \"PID: $\\($p.Id\\)\"')"
+    ]
+  }
+}

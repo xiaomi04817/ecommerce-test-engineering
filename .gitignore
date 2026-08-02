@@ -1,0 +1,28 @@
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# Java / Maven
+backend/target/
+backend/classpath.txt
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.egg-info/
+
+# Node / Frontend
+frontend/node_modules/
+frontend/dist/
+
+# Test artifacts
+test_pratices/__pycache__/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Chat history / notes
+cp.txt

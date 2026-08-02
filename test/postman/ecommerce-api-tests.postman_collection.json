@@ -1,0 +1,548 @@
+{
+	"info": {
+		"name": "电商系统 API 测试集合",
+		"description": "电商测试工程项目 — 接口测试集合\n\n包含所有模块的正向和异常测试用例。\n使用前请设置环境变量: base_url, username, password",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8080/api"
+		},
+		{
+			"key": "token",
+			"value": ""
+		},
+		{
+			"key": "username",
+			"value": "testuser1"
+		},
+		{
+			"key": "password",
+			"value": "Test@123456"
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"exec": [
+					"// 自动在需要认证的请求中添加 Bearer Token",
+					"const token = pm.variables.get('token');",
+					"if (token) {",
+					"    pm.request.headers.add({",
+					"        key: 'Authorization',",
+					"        value: `Bearer ${token}`",
+					"    });",
+					"}"
+				],
+				"type": "text/javascript"
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"exec": [
+					"// 登录后自动提取 token",
+					"const response = pm.response.json();",
+					"if (response.code === 200 && response.data && response.data.token) {",
+					"    pm.variables.set('token', response.data.token);",
+					"    console.log('Token 已自动更新');",
+					"}"
+				],
+				"type": "text/javascript"
+			}
+		}
+	],
+	"item": [
+		{
+			"name": "Auth",
+			"item": [
+				{
+					"name": "注册 - 正向",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('状态码 200', () => pm.response.to.have.status(200));",
+									"const res = pm.response.json();",
+									"pm.test('返回 code=200', () => pm.expect(res.code).to.eql(200));",
+									"pm.test('返回用户名', () => pm.expect(res.data.username).to.be.a('string'));"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"url": "{{base_url}}/auth/register",
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"username\": \"newuser_{{ $timestamp }}\",\n  \"password\": \"TestPass123\",\n  \"email\": \"newuser_{{ $timestamp }}@example.com\"\n}",
+							"options": {"raw": {"language": "json"}}
+						}
+					}
+				},
+				{
+					"name": "注册 - 重复用户名",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('状态码 200', () => pm.response.to.have.status(200));",
+									"const res = pm.response.json();",
+									"pm.test('返回错误码', () => pm.expect(res.code).to.not.eql(200));"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"url": "{{base_url}}/auth/register",
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"username\": \"{{username}}\",\n  \"password\": \"TestPass123\",\n  \"email\": \"dup@example.com\"\n}",
+							"options": {"raw": {"language": "json"}}
+						}
+					}
+				},
+				{
+					"name": "注册 - 密码过短",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const res = pm.response.json();",
+									"pm.test('返回错误', () => pm.expect(res.code).to.eql(400));"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"url": "{{base_url}}/auth/register",
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"username\": \"test_short_pass\",\n  \"password\": \"Ab1\",\n  \"email\": \"short@example.com\"\n}",
+							"options": {"raw": {"language": "json"}}
+						}
+					}
+				},
+				{
+					"name": "登录 - 正向",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('状态码 200', () => pm.response.to.have.status(200));",
+									"const res = pm.response.json();",
+									"pm.test('返回 code=200', () => pm.expect(res.code).to.eql(200));",
+									"pm.test('返回 token', () => pm.expect(res.data.token).to.be.a('string'));",
+									"pm.test('token 非空', () => pm.expect(res.data.token.length).to.be.above(0));"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"url": "{{base_url}}/auth/login",
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\"\n}",
+							"options": {"raw": {"language": "json"}}
+						}
+					}
+				},
+				{
+					"name": "登录 - 错误密码",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const res = pm.response.json();",
+									"pm.test('返回错误', () => pm.expect(res.code).to.eql(401));"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"url": "{{base_url}}/auth/login",
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"username\": \"{{username}}\",\n  \"password\": \"WrongPassword123\"\n}",
+							"options": {"raw": {"language": "json"}}
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "User",
+			"item": [
+				{
+					"name": "获取用户信息 - 正向",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('状态码 200', () => pm.response.to.have.status(200));",
+									"const res = pm.response.json();",
+									"pm.test('返回 code=200', () => pm.expect(res.code).to.eql(200));"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"url": "{{base_url}}/users/me"
+					}
+				},
+				{
+					"name": "获取用户信息 - 无Token",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const res = pm.response.json();",
+									"pm.test('返回 401', () => pm.expect(res.code).to.eql(401));"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"url": "{{base_url}}/users/me",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "",
+								"disabled": true
+							}
+						]
+					}
+				}
+			]
+		},
+		{
+			"name": "Product",
+			"item": [
+				{
+					"name": "商品列表 - 默认分页",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('状态码 200', () => pm.response.to.have.status(200));",
+									"const res = pm.response.json();",
+									"pm.test('返回 code=200', () => pm.expect(res.code).to.eql(200));",
+									"pm.test('返回分页数据', () => {",
+									"  pm.expect(res.data.total).to.be.a('number');",
+									"  pm.expect(res.data.records).to.be.an('array');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"url": "{{base_url}}/products?page=1&size=5"
+					}
+				},
+				{
+					"name": "商品搜索 - 正向",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const res = pm.response.json();",
+									"pm.test('返回 code=200', () => pm.expect(res.code).to.eql(200));"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"url": "{{base_url}}/products/search?keyword=手机&page=1&size=10"
+					}
+				},
+				{
+					"name": "商品搜索 - 关键词过短",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const res = pm.response.json();",
+									"pm.test('返回错误', () => pm.expect(res.code).to.eql(400));"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"url": "{{base_url}}/products/search?keyword=a"
+					}
+				}
+			]
+		},
+		{
+			"name": "Cart",
+			"item": [
+				{
+					"name": "查看购物车 - 正向",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const res = pm.response.json();",
+									"pm.test('返回200', () => pm.expect(res.code).to.eql(200));"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"url": "{{base_url}}/cart"
+					}
+				},
+				{
+					"name": "添加购物车 - 正向",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const res = pm.response.json();",
+									"pm.test('返回200', () => pm.expect(res.code).to.eql(200));"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"url": "{{base_url}}/cart/items",
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"productId\": 1,\n  \"quantity\": 2\n}",
+							"options": {"raw": {"language": "json"}}
+						}
+					}
+				},
+				{
+					"name": "添加购物车 - 未登录",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const res = pm.response.json();",
+									"pm.test('返回401', () => pm.expect(res.code).to.eql(401));"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"url": "{{base_url}}/cart/items",
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"productId\": 1,\n  \"quantity\": 1\n}",
+							"options": {"raw": {"language": "json"}}
+						},
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "",
+								"disabled": true
+							}
+						]
+					}
+				}
+			]
+		},
+		{
+			"name": "Address",
+			"item": [
+				{
+					"name": "新增地址 - 正向",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const res = pm.response.json();",
+									"pm.test('返回200', () => pm.expect(res.code).to.eql(200));"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"url": "{{base_url}}/addresses",
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"receiverName\": \"张三\",\n  \"phone\": \"13800138000\",\n  \"province\": \"广东省\",\n  \"city\": \"深圳市\",\n  \"district\": \"南山区\",\n  \"detail\": \"科技园路1号创新大厦A座1001室\"\n}",
+							"options": {"raw": {"language": "json"}}
+						}
+					}
+				},
+				{
+					"name": "新增地址 - 手机号非法",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const res = pm.response.json();",
+									"pm.test('返回错误', () => pm.expect(res.code).to.eql(400));"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"url": "{{base_url}}/addresses",
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"receiverName\": \"张三\",\n  \"phone\": \"12345\",\n  \"province\": \"广东省\",\n  \"city\": \"深圳市\",\n  \"district\": \"南山区\",\n  \"detail\": \"科技园路1号创新大厦A座\"\n}",
+							"options": {"raw": {"language": "json"}}
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Order - 完整下单链路",
+			"item": [
+				{
+					"name": "创建订单 - 正向",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const res = pm.response.json();",
+									"pm.test('返回200', () => pm.expect(res.code).to.eql(200));",
+									"pm.test('包含订单号', () => pm.expect(res.data.orderNo).to.be.a('string'));",
+									"pm.test('状态为PENDING', () => pm.expect(res.data.status).to.eql('PENDING'));",
+									"pm.variables.set('orderId', res.data.id);",
+									"pm.variables.set('orderNo', res.data.orderNo);"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"url": "{{base_url}}/orders",
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"addressId\": 1,\n  \"items\": [{\n    \"productId\": 1,\n    \"quantity\": 1\n  }],\n  \"remark\": \"测试下单\"\n}",
+							"options": {"raw": {"language": "json"}}
+						}
+					}
+				},
+				{
+					"name": "订单支付",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const res = pm.response.json();",
+									"pm.test('返回200', () => pm.expect(res.code).to.eql(200));",
+									"pm.test('状态变为PAID', () => pm.expect(res.data.status).to.eql('PAID'));"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"url": "{{base_url}}/orders/{{orderId}}/status",
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"action\": \"pay\"\n}",
+							"options": {"raw": {"language": "json"}}
+						}
+					}
+				},
+				{
+					"name": "订单发货 (需管理员)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const res = pm.response.json();",
+									"pm.test('状态变为SHIPPED 或 返回权限错误', () => {",
+									"  pm.expect([200, 403]).to.include(res.code);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"url": "{{base_url}}/orders/{{orderId}}/status",
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"action\": \"ship\"\n}",
+							"options": {"raw": {"language": "json"}}
+						}
+					}
+				},
+				{
+					"name": "订单状态流转 - 非法跳转",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const res = pm.response.json();",
+									"pm.test('返回错误', () => pm.expect(res.code).to.not.eql(200));"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"url": "{{base_url}}/orders/{{orderId}}/status",
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"action\": \"receive\"\n}",
+							"options": {"raw": {"language": "json"}}
+						}
+					}
+				}
+			]
+		}
+	]
+}

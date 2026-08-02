@@ -1,0 +1,883 @@
+openapi: "3.0.3"
+info:
+  title: 电商系统 API
+  description: 电商测试工程项目 — 接口规范
+  version: "1.0.0"
+  contact:
+    name: 测试工程团队
+
+servers:
+  - url: http://localhost:8080/api
+    description: 本地开发服务器
+
+tags:
+  - name: Auth
+    description: 认证模块 (注册/登录)
+  - name: User
+    description: 用户模块
+  - name: Product
+    description: 商品模块
+  - name: Cart
+    description: 购物车模块
+  - name: Address
+    description: 收货地址模块
+  - name: Order
+    description: 订单模块
+
+# ============================================================
+# 公共数据结构
+# ============================================================
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    # --- 通用响应 ---
+    ApiResponse:
+      type: object
+      properties:
+        code:
+          type: integer
+          description: 状态码 (200成功, 4xx客户端错误, 5xx服务端错误)
+          example: 200
+        message:
+          type: string
+          description: 提示信息
+          example: "success"
+        data:
+          type: object
+          description: 响应数据
+
+    PageResult:
+      type: object
+      properties:
+        total:
+          type: integer
+          description: 总记录数
+        page:
+          type: integer
+          description: 当前页码
+        size:
+          type: integer
+          description: 每页条数
+        records:
+          type: array
+          description: 数据列表
+          items: {}
+
+    # --- 用户 ---
+    RegisterRequest:
+      type: object
+      required: [username, password, email]
+      properties:
+        username:
+          type: string
+          description: 用户名 (字母开头, 3-20位, 字母数字下划线)
+          minLength: 3
+          maxLength: 20
+          pattern: '^[a-zA-Z][a-zA-Z0-9_]{2,19}$'
+          example: "testuser1"
+        password:
+          type: string
+          description: 密码 (6-20位, 至少含字母+数字)
+          minLength: 6
+          maxLength: 20
+          example: "Test@123456"
+        email:
+          type: string
+          format: email
+          description: 邮箱
+          example: "test@example.com"
+
+    LoginRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+          example: "testuser1"
+        password:
+          type: string
+          example: "Test@123456"
+
+    LoginResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          description: JWT Token
+        user:
+          $ref: '#/components/schemas/UserInfo'
+
+    UserInfo:
+      type: object
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+        email:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    # --- 商品 ---
+    ProductInfo:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+          description: 商品名称
+        price:
+          type: number
+          format: double
+          description: 价格 (保留两位小数)
+        stock:
+          type: integer
+          description: 库存
+        description:
+          type: string
+          description: 商品描述
+        imageUrl:
+          type: string
+          description: 主图URL
+        images:
+          type: array
+          items:
+            type: string
+          description: 图片列表
+
+    # --- 购物车 ---
+    CartItemRequest:
+      type: object
+      required: [productId, quantity]
+      properties:
+        productId:
+          type: integer
+          description: 商品ID
+        quantity:
+          type: integer
+          minimum: 1
+          description: 数量
+
+    CartItemInfo:
+      type: object
+      properties:
+        id:
+          type: integer
+        productId:
+          type: integer
+        productName:
+          type: string
+        price:
+          type: number
+          format: double
+        quantity:
+          type: integer
+        subtotal:
+          type: number
+          format: double
+          description: 小计 (price × quantity)
+
+    CartInfo:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CartItemInfo'
+        totalAmount:
+          type: number
+          format: double
+          description: 总计金额
+
+    # --- 地址 ---
+    AddressRequest:
+      type: object
+      required: [receiverName, phone, province, city, district, detail]
+      properties:
+        receiverName:
+          type: string
+          minLength: 2
+          maxLength: 20
+          example: "张三"
+        phone:
+          type: string
+          pattern: '^1[3-9]\d{9}$'
+          description: 中国大陆手机号
+          example: "13800138000"
+        province:
+          type: string
+          example: "广东省"
+        city:
+          type: string
+          example: "深圳市"
+        district:
+          type: string
+          example: "南山区"
+        detail:
+          type: string
+          minLength: 5
+          maxLength: 100
+          example: "科技园路1号创新大厦A座1001室"
+        isDefault:
+          type: boolean
+          default: false
+
+    AddressInfo:
+      allOf:
+        - $ref: '#/components/schemas/AddressRequest'
+        - type: object
+          properties:
+            id:
+              type: integer
+            userId:
+              type: integer
+
+    # --- 订单 ---
+    OrderItemRequest:
+      type: object
+      required: [productId, quantity]
+      properties:
+        productId:
+          type: integer
+        quantity:
+          type: integer
+          minimum: 1
+
+    CreateOrderRequest:
+      type: object
+      required: [addressId, items]
+      properties:
+        addressId:
+          type: integer
+          description: 收货地址ID
+        items:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/OrderItemRequest'
+        remark:
+          type: string
+          maxLength: 200
+          description: 订单备注
+
+    OrderItemInfo:
+      type: object
+      properties:
+        id:
+          type: integer
+        productId:
+          type: integer
+        productName:
+          type: string
+        price:
+          type: number
+          format: double
+          description: 下单时价格快照
+        quantity:
+          type: integer
+        subtotal:
+          type: number
+          format: double
+
+    OrderInfo:
+      type: object
+      properties:
+        id:
+          type: integer
+        orderNo:
+          type: string
+          description: 订单号
+          example: "20260623-AB3X9K"
+        userId:
+          type: integer
+        status:
+          type: string
+          enum: [PENDING, PAID, SHIPPED, RECEIVED, CANCELLED, REFUNDED]
+          description: |
+            订单状态:
+            - PENDING: 待支付
+            - PAID: 已支付
+            - SHIPPED: 已发货
+            - RECEIVED: 已收货
+            - CANCELLED: 已取消
+            - REFUNDED: 已退款
+        totalAmount:
+          type: number
+          format: double
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderItemInfo'
+        address:
+          $ref: '#/components/schemas/AddressInfo'
+        remark:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    StatusUpdateRequest:
+      type: object
+      required: [action]
+      properties:
+        action:
+          type: string
+          enum: [pay, ship, receive, cancel, refund]
+          description: |
+            状态操作:
+            - pay: 支付 (PENDING → PAID)
+            - ship: 发货 (PAID → SHIPPED, 需管理员权限)
+            - receive: 确认收货 (SHIPPED → RECEIVED)
+            - cancel: 取消 (PENDING → CANCELLED)
+            - refund: 退款 (PAID/SHIPPED → REFUNDED)
+
+    # --- 错误响应 ---
+    ErrorResponse:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 400
+        message:
+          type: string
+          example: "用户名已存在"
+        data:
+          type: object
+          nullable: true
+
+# ============================================================
+# API 路径定义
+# ============================================================
+paths:
+  # ==================== 认证模块 ====================
+  /auth/register:
+    post:
+      tags: [Auth]
+      summary: 用户注册
+      description: 创建新用户账户。用户名唯一，密码需含字母+数字。
+      operationId: register
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '200':
+          description: 注册成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/UserInfo'
+        '400':
+          description: 参数校验失败或用户名已存在
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: 用户登录
+      description: 验证用户名密码，返回JWT Token。
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: 登录成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/LoginResponse'
+        '401':
+          description: 用户名或密码错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ==================== 用户模块 ====================
+  /users/me:
+    get:
+      tags: [User]
+      summary: 获取当前用户信息
+      description: 根据JWT Token返回当前登录用户信息。
+      operationId: getCurrentUser
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/UserInfo'
+        '401':
+          description: Token无效或过期
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ==================== 商品模块 ====================
+  /products:
+    get:
+      tags: [Product]
+      summary: 商品列表
+      description: 分页获取商品列表。
+      operationId: listProducts
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: size
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/PageResult'
+
+  /products/{id}:
+    get:
+      tags: [Product]
+      summary: 商品详情
+      description: 根据商品ID获取商品完整信息。
+      operationId: getProduct
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/ProductInfo'
+        '404':
+          description: 商品不存在
+
+  /products/search:
+    get:
+      tags: [Product]
+      summary: 商品搜索
+      description: 按关键词模糊搜索商品名称。
+      operationId: searchProducts
+      parameters:
+        - name: keyword
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 2
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: size
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/PageResult'
+
+  # ==================== 购物车模块 ====================
+  /cart:
+    get:
+      tags: [Cart]
+      summary: 查看购物车
+      description: 获取当前用户购物车中所有商品。
+      operationId: getCart
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/CartInfo'
+        '401':
+          description: 未登录
+
+  /cart/items:
+    post:
+      tags: [Cart]
+      summary: 添加到购物车
+      description: 添加商品到购物车，如已存在则数量累加。
+      operationId: addCartItem
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CartItemRequest'
+      responses:
+        '200':
+          description: 添加成功
+        '400':
+          description: 库存不足或参数错误
+        '401':
+          description: 未登录
+
+  /cart/items/{id}:
+    put:
+      tags: [Cart]
+      summary: 修改购物车商品数量
+      description: 更新购物车中指定商品的数量。
+      operationId: updateCartItem
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: 购物车项ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [quantity]
+              properties:
+                quantity:
+                  type: integer
+                  minimum: 1
+      responses:
+        '200':
+          description: 修改成功
+        '404':
+          description: 购物车项不存在
+    delete:
+      tags: [Cart]
+      summary: 删除购物车商品
+      description: 从购物车中移除指定商品。
+      operationId: deleteCartItem
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: 购物车项ID
+      responses:
+        '200':
+          description: 删除成功
+
+  # ==================== 地址模块 ====================
+  /addresses:
+    get:
+      tags: [Address]
+      summary: 获取地址列表
+      description: 获取当前用户所有收货地址。
+      operationId: listAddresses
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/AddressInfo'
+    post:
+      tags: [Address]
+      summary: 新增地址
+      description: 添加收货地址，最多10个。
+      operationId: createAddress
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddressRequest'
+      responses:
+        '200':
+          description: 添加成功
+        '400':
+          description: 参数校验失败或地址数量达上限
+
+  /addresses/{id}:
+    put:
+      tags: [Address]
+      summary: 修改地址
+      description: 修改已有收货地址。
+      operationId: updateAddress
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddressRequest'
+      responses:
+        '200':
+          description: 修改成功
+        '403':
+          description: 只能操作自己的地址
+    delete:
+      tags: [Address]
+      summary: 删除地址 (逻辑删除)
+      description: 删除收货地址，被订单引用的地址不可物理删除。
+      operationId: deleteAddress
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 删除成功
+        '403':
+          description: 只能操作自己的地址
+
+  # ==================== 订单模块 ====================
+  /orders:
+    post:
+      tags: [Order]
+      summary: 创建订单
+      description: 提交订单，扣减库存。使用乐观锁防止超卖。
+      operationId: createOrder
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateOrderRequest'
+      responses:
+        '200':
+          description: 下单成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/OrderInfo'
+        '400':
+          description: 库存不足/参数错误
+    get:
+      tags: [Order]
+      summary: 获取订单列表
+      description: 分页获取当前用户所有订单，按创建时间倒序。
+      operationId: listOrders
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: size
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [PENDING, PAID, SHIPPED, RECEIVED, CANCELLED, REFUNDED]
+          description: 按状态筛选（可选）
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/PageResult'
+
+  /orders/{id}:
+    get:
+      tags: [Order]
+      summary: 获取订单详情
+      description: 根据订单ID获取订单完整信息。
+      operationId: getOrder
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/OrderInfo'
+        '403':
+          description: 只能查看自己的订单
+        '404':
+          description: 订单不存在
+
+  /orders/{id}/status:
+    put:
+      tags: [Order]
+      summary: 订单状态流转
+      description: |
+        执行订单状态迁移操作:
+        - PENDING → pay → PAID
+        - PENDING → cancel → CANCELLED
+        - PAID → ship → SHIPPED (管理员)
+        - PAID → refund → REFUNDED
+        - SHIPPED → receive → RECEIVED
+        - SHIPPED → refund → REFUNDED
+      operationId: updateOrderStatus
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StatusUpdateRequest'
+      responses:
+        '200':
+          description: 状态更新成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/OrderInfo'
+        '400':
+          description: 非法的状态迁移
+        '403':
+          description: 无权限操作该订单
+
+# ============================================================
+# 全局安全设置
+# ============================================================
+security:
+  - BearerAuth: []
